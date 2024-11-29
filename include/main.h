@@ -61,3 +61,21 @@ typedef struct
  ****************************************************************************************************************/
 
 #endif //MAIN_H
+
+
+#define DHPN_TEST
+
+#ifdef DHPN_TEST
+
+void turnAround();
+void shortPath();
+void printPath();
+void replay();
+void endMotion();
+void readSensors();
+void done();
+void turnLeft();
+void turnRight();
+void straight();
+
+#endif  /* DHPN_TEST*/
