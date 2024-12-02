@@ -101,7 +101,11 @@ void executarMovimentoMotor(operacaoRobo_t operacaoRobo)
         }break;
         case ROBO_MEIA_VOLTA:
         {
-            /* Não utilizado */
+            digitalWrite(IN1, LOW);
+            digitalWrite(IN2, HIGH);
+            digitalWrite(IN3, LOW);
+            digitalWrite(IN4, HIGH);
+            delay(150);  // Faz uma pausa pequena para a meia-volta
         }break;
         
         case ROBO_PARADO:

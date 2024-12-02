@@ -1,71 +1,20 @@
-/****************************************************************************************************************
- *  BIBLIOTECAS
- ****************************************************************************************************************/
-
 #include "Arduino.h"
-
 #include "sensorUltrassonico.h"
 
-/****************************************************************************************************************
- *  DEFINES E ENUMS
- ****************************************************************************************************************/
-
-/**
- *  @brief  Pino do emissor referente ao sensor frontal
- */
 #define PIN_TRIGGER_FRONTAL (13U)
-/**
- *  @brief  Pino do receptor referente ao sensor frontal
- */
 #define PIN_ECHO_FRONTAL (12U)
-/**
- *  @brief  Pino do emissor referente ao sensor lateral direito
- */
 #define PIN_TRIGGER_DIREITO (8U)
-/**
- *  @brief  Pino do receptor referente ao sensor lateral direito
- */
 #define PIN_ECHO_FRONTAL_DIREITO (7U)
-/**
- *  @brief  Pino do emissor referente ao sensor lateral esquerdo
- */
 #define PIN_TRIGGER_ESQUERDO (4U)
-/**
- *  @brief  Pino do receptor referente ao sensor lateral esquerdo
- */
 #define PIN_ECHO_FRONTAL_ESQUERDO (10U)
 
-/**
- *  @brief  Distância máxima permitida para obstáculo frontal
- */
 #define DISTANCIA_MAX_FRONTAL (20)
-/**
- *  @brief  Distância máxima permitida para obstáculo frontal no processo de giro
- */
 #define DISTANCIA_MAX_FRONTAL_PROC_GIRO (DISTANCIA_MAX_FRONTAL * 2)
 
-/****************************************************************************************************************
- *  TYPEDEFS
- ****************************************************************************************************************/
-
-/****************************************************************************************************************
- *  VARIÁVEIS
- ****************************************************************************************************************/
-
-/**
- *  @brief  Armazena o estado do movimento do robô
- */
 static estadosMovimentoRobo_t maquinaEstadosDirecaoRobo = EST0;
-
-/****************************************************************************************************************
- *  PROTÓTIPOS DE FUNÇÃO
- ****************************************************************************************************************/
 
 void configura_velocidade_robo(operacaoRobo_t * operacaoRobo, int leituraSensorFrontal);
 
-/****************************************************************************************************************
- *  FUNÇÕES EXPORTADAS
- ****************************************************************************************************************/
 
 void obtem_direcao_robo(operacaoRobo_t * operacaoRobo)
 {
@@ -76,21 +25,16 @@ void obtem_direcao_robo(operacaoRobo_t * operacaoRobo)
 
     switch(maquinaEstadosDirecaoRobo)
     {
-        /*************************************************
-         *  ESTADO 0 - ROBÔ PARADO
-         *************************************************/
         case EST0:
         {
-            /* Atualiza a operação dos motores */
+            /* Inicializa a operação dos motores */
             operacaoRobo->direcaoRobo = ROBO_PARADO;
             /* Atualiza a velocidade do robô */
             operacaoRobo->velocidadeRobo = RAPIDA_VELOCIDADE;
             /* Muda o estado de operação */
             maquinaEstadosDirecaoRobo = EST1;
         }break;
-        /*************************************************
-         *  ESTADO 1 - ROBÔ ANDANDO PARA FRENTE
-         *************************************************/
+
         case EST1:
         {
             /* Atualiza a operação dos motores */
@@ -101,110 +45,76 @@ void obtem_direcao_robo(operacaoRobo_t * operacaoRobo)
             maquinaEstadosDirecaoRobo = EST2;
         }
         break;
-        /*************************************************
-         *  ESTADO 2 - ROBÔ VERIFICA OBSTÁCULO À FRENTE
-         *************************************************/
+
         case EST2:
         {
+            // O robô segue em frente até detectar um obstáculo
             if(leituraSensorFrontal < DISTANCIA_MAX_FRONTAL)
             {
-                /* Atualiza a operação dos motores */
                 operacaoRobo->direcaoRobo = ROBO_PARADO;
-                /* Atualiza a velocidade do robô */
-                operacaoRobo->velocidadeRobo = RAPIDA_VELOCIDADE;
-                /* Muda o estado de operação */
-                maquinaEstadosDirecaoRobo = EST3;
+                maquinaEstadosDirecaoRobo = EST3; // Estado para avaliação dos sensores laterais
             }
-            // else    // djhou - criar função de monitoramento 
-            // {
-            //     /* Continua andando reto */
-            //     operacaoRobo.direcaoRobo = ROBO_SEGUE_RETO;
-
-            //     caminho_alternativo();
-
-            //     // seta flags de direção livre
-            //     if(leituraSensorDireito < DISTANCIA_MAX_FRONTAL)
-            //     {
-            //         flagDireitaLivre = true;
-            //         // contaAmostra++;
-            //     }
-            //     else if(leituraSensorEsquerdo < DISTANCIA_MAX_FRONTAL)
-            //     {
-            //         flagEsquerdaLivre = true;
-            //         // contaAmostra++;
-            //     }
-            //     else
-            //     {
-            //         // direções direita e esquerda bloqueadas 
-            //     }
-            // }
-
+            else
+            {
+                // Se o sensor lateral esquerdo estiver livre, o robô deve virar à esquerda
+                if (leituraSensorEsquerdo > DISTANCIA_MAX_FRONTAL)
+                {
+                    operacaoRobo->direcaoRobo = ROBO_VIRA_ESQUERDA;
+                }
+                // Caso contrário, se o direito estiver livre, o robô vira para a direita
+                else if (leituraSensorDireito > DISTANCIA_MAX_FRONTAL)
+                {
+                    operacaoRobo->direcaoRobo = ROBO_VIRA_DIREITA;
+                }
+                // Caso contrário, o robô segue reto
+                else
+                {
+                    operacaoRobo->direcaoRobo = ROBO_SEGUE_RETO;
+                }
+            }
             configura_velocidade_robo(operacaoRobo, leituraSensorFrontal);
         }break;
-        /*************************************************
-         *  ESTADO 3 - ROBÔ DECIDE QUAL LADO VIRAR
-         *************************************************/
+
         case EST3:
         {
-            /* aguarda tempo para manter o robô parado (talvez utilizar timer para acionar o estado anterior e pausar neste estado) */
+            // Aguarda tempo para processar a situação (gerenciamento de espera)
             delay(1000);
-
-            if(leituraSensorDireito < leituraSensorEsquerdo)
+            // Após o robô parar, verifica novamente qual direção escolher
+            if(leituraSensorEsquerdo > leituraSensorDireito)
             {
-                /* Como o sensor do lado direito está com a menor distância,
-                * significa que há uma parede mais próxima deste lado, neste caso,
-                * deve virar para o lado esquerdo
-                */
                 operacaoRobo->direcaoRobo = ROBO_VIRA_ESQUERDA;
             }
             else if(leituraSensorDireito > leituraSensorEsquerdo)
             {
-                /* Como o sensor do lado esquerdo está com a menor distância,
-                * significa que há uma parede mais próxima deste lado, neste caso,
-                * deve virar para o lado direito
-                */
-                operacaoRobo->direcaoRobo = ROBO_VIRA_DIREITA;            
+                operacaoRobo->direcaoRobo = ROBO_VIRA_DIREITA;
             }
             else
             {
+                // Robô encurralado. Dando meia volta...
                 operacaoRobo->direcaoRobo = ROBO_MEIA_VOLTA;
             }
-            /* Atualiza a velocidade do robô */
             operacaoRobo->velocidadeRobo = RAPIDA_VELOCIDADE;
-            /* Muda o estado de operação */
             maquinaEstadosDirecaoRobo = EST4;
         }break;
-        /*************************************************
-         *  ESTADO 4 - PROCESSO DE GIRO
-         *************************************************/
+
         case EST4:
         {
-            if(leituraSensorFrontal < DISTANCIA_MAX_FRONTAL_PROC_GIRO)
+            // Continua processando até encontrar um caminho livre
+            if(leituraSensorFrontal >= DISTANCIA_MAX_FRONTAL)
             {
-                /* Continua com a direção de giro e permanece neste estado */
-                // if(flagEsquerdaLivre == true || flagDireitaLivre == true){
-                //     // if(contaAmostra > debounceAmostras)
-                //     // {
-                //     // }
-    
-                // }
-            }
-            else
-            {
-                /* Inicializa a máquina de estados */
-                maquinaEstadosDirecaoRobo = EST0;
-                /* Atualiza a operação dos motores */
+                maquinaEstadosDirecaoRobo = EST0;  // Retorna para o estado inicial para seguir em frente novamente
                 operacaoRobo->direcaoRobo = ROBO_PARADO;
             }
         }break;
 
         default:
         {
-            /* Não faz nada */
+            // Não faz nada
         }
         break;
     }
 }
+
 
 /****************************************************************************************************************
  *  FUNÇÕES LOCAIS
