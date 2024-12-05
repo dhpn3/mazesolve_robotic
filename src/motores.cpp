@@ -29,11 +29,11 @@
 #define VELOCIDADE_ALTA_MOTOR_A     (VELOCIDADE_INICIAL_MOTOR_A)
 #define VELOCIDADE_ALTA_MOTOR_B     (VELOCIDADE_INICIAL_MOTOR_B)
 
-// definindo as portas onde estão conectados os motores 
-#define IN1 2  //Pinos motor A (Direita)        
-#define IN2 3  //Pinos motor A (Direita)                
-#define IN4 5  //Pinos motor B (Esquerda)                    
-#define IN3 6  //Pinos motor B (Esquerda)   
+// // definindo as portas onde estão conectados os motores 
+// #define IN1 2  //Pinos motor A (Direita)        
+// #define IN2 3  //Pinos motor A (Direita)                
+// #define IN4 5  //Pinos motor B (Esquerda)                    
+// #define IN3 6  //Pinos motor B (Esquerda)   
 
 #define ENA 9  //Pino velocidade motor A (Enable A)              
 #define ENB 11  //Pino velocidade motor B (Enable B)  
@@ -111,13 +111,13 @@ void executarMovimentoMotor(operacaoRobo_t operacaoRobo)
         case ROBO_PARADO:
         default:
         {
-            /* Ré */
-            digitalWrite(IN1, LOW);
-            digitalWrite(IN2, HIGH);
-            digitalWrite(IN3, LOW);
-            digitalWrite(IN4, HIGH);
+            // /* Ré */
+            // digitalWrite(IN1, LOW);
+            // digitalWrite(IN2, HIGH);
+            // digitalWrite(IN3, LOW);
+            // digitalWrite(IN4, HIGH);
 
-            delay(150);
+            // delay(150);
 
             digitalWrite(IN1, LOW);
             digitalWrite(IN2, LOW);

@@ -1,5 +1,6 @@
 #include "Arduino.h"
 #include "sensorUltrassonico.h"
+#include <motores.h>
 
 #define PIN_TRIGGER_FRONTAL (13U)
 #define PIN_ECHO_FRONTAL (12U)
@@ -8,7 +9,7 @@
 #define PIN_TRIGGER_ESQUERDO (4U)
 #define PIN_ECHO_FRONTAL_ESQUERDO (10U)
 
-#define DISTANCIA_MAX_FRONTAL (20)
+#define DISTANCIA_MAX_FRONTAL (15)
 #define DISTANCIA_MAX_FRONTAL_PROC_GIRO (DISTANCIA_MAX_FRONTAL * 2)
 
 static estadosMovimentoRobo_t maquinaEstadosDirecaoRobo = EST0;
@@ -23,6 +24,8 @@ void obtem_direcao_robo(operacaoRobo_t * operacaoRobo)
     int leituraSensorDireito    = distancia_sensor_direito();
     int leituraSensorEsquerdo   = distancia_sensor_esquerdo();
 
+    static uint8_t old_state = 0;
+
     switch(maquinaEstadosDirecaoRobo)
     {
         case EST0:
@@ -30,7 +33,7 @@ void obtem_direcao_robo(operacaoRobo_t * operacaoRobo)
             /* Inicializa a operação dos motores */
             operacaoRobo->direcaoRobo = ROBO_PARADO;
             /* Atualiza a velocidade do robô */
-            operacaoRobo->velocidadeRobo = RAPIDA_VELOCIDADE;
+            operacaoRobo->velocidadeRobo = MEDIA_VELOCIDADE;
             /* Muda o estado de operação */
             maquinaEstadosDirecaoRobo = EST1;
         }break;
@@ -40,7 +43,7 @@ void obtem_direcao_robo(operacaoRobo_t * operacaoRobo)
             /* Atualiza a operação dos motores */
             operacaoRobo->direcaoRobo = ROBO_SEGUE_RETO;
             /* Atualiza a velocidade do robô */
-            operacaoRobo->velocidadeRobo = RAPIDA_VELOCIDADE;
+            operacaoRobo->velocidadeRobo = MEDIA_VELOCIDADE;
             /* Muda o estado de operação */
             maquinaEstadosDirecaoRobo = EST2;
         }
@@ -57,53 +60,76 @@ void obtem_direcao_robo(operacaoRobo_t * operacaoRobo)
             else
             {
                 // Se o sensor lateral esquerdo estiver livre, o robô deve virar à esquerda
-                if (leituraSensorEsquerdo > DISTANCIA_MAX_FRONTAL)
+                if (leituraSensorEsquerdo > 30 && leituraSensorEsquerdo < 70)   // por ex: 50
                 {
-                    operacaoRobo->direcaoRobo = ROBO_VIRA_ESQUERDA;
+                    // operacaoRobo->direcaoRobo = ROBO_VIRA_ESQUERDA;
+                    old_state = ROBO_VIRA_ESQUERDA;
+                    operacaoRobo->direcaoRobo = ROBO_PARADO;
+                    maquinaEstadosDirecaoRobo = EST3;
+                }
+                else if(leituraSensorEsquerdo > 70){
+                    // esquerda infinita
                 }
                 // Caso contrário, se o direito estiver livre, o robô vira para a direita
-                else if (leituraSensorDireito > DISTANCIA_MAX_FRONTAL)
+                else if (leituraSensorDireito > 30 && leituraSensorDireito < 70)
                 {
-                    operacaoRobo->direcaoRobo = ROBO_VIRA_DIREITA;
+                    // operacaoRobo->direcaoRobo = ROBO_VIRA_DIREITA;
+                    old_state = ROBO_VIRA_DIREITA;
+                    operacaoRobo->direcaoRobo = ROBO_PARADO;
+                    maquinaEstadosDirecaoRobo = EST3;
                 }
                 // Caso contrário, o robô segue reto
                 else
                 {
+                    old_state = ROBO_SEGUE_RETO;
                     operacaoRobo->direcaoRobo = ROBO_SEGUE_RETO;
+                    operacaoRobo->velocidadeRobo = BAIXA_VELOCIDADE;
+
                 }
             }
-            configura_velocidade_robo(operacaoRobo, leituraSensorFrontal);
+            // configura_velocidade_robo(operacaoRobo, leituraSensorFrontal);
         }break;
 
         case EST3:
         {
             // Aguarda tempo para processar a situação (gerenciamento de espera)
-            delay(1000);
+            delay(500);
+
             // Após o robô parar, verifica novamente qual direção escolher
-            if(leituraSensorEsquerdo > leituraSensorDireito)
+            if(leituraSensorEsquerdo > leituraSensorDireito || old_state == ROBO_VIRA_ESQUERDA)
             {
                 operacaoRobo->direcaoRobo = ROBO_VIRA_ESQUERDA;
+                old_state = 0;  // reset
             }
-            else if(leituraSensorDireito > leituraSensorEsquerdo)
+            else if(leituraSensorDireito > leituraSensorEsquerdo || old_state == ROBO_VIRA_DIREITA)
             {
                 operacaoRobo->direcaoRobo = ROBO_VIRA_DIREITA;
+                old_state = 0;  // reset
             }
             else
             {
                 // Robô encurralado. Dando meia volta...
                 operacaoRobo->direcaoRobo = ROBO_MEIA_VOLTA;
+
+                // fazer oq apos isso?
+                // atualmente ta indo pro EST4
             }
-            operacaoRobo->velocidadeRobo = RAPIDA_VELOCIDADE;
+            operacaoRobo->velocidadeRobo = MEDIA_VELOCIDADE;
             maquinaEstadosDirecaoRobo = EST4;
         }break;
 
         case EST4:
         {
             // Continua processando até encontrar um caminho livre
-            if(leituraSensorFrontal >= DISTANCIA_MAX_FRONTAL)
+            if(leituraSensorFrontal >= DISTANCIA_MAX_FRONTAL_PROC_GIRO)
             {
                 maquinaEstadosDirecaoRobo = EST0;  // Retorna para o estado inicial para seguir em frente novamente
                 operacaoRobo->direcaoRobo = ROBO_PARADO;
+            }
+            else{
+                // ainda nao desbloqueou o frontal, continua dando meia volta
+                // if(leituraSensorEsquerdo > 30)
+                // operacaoRobo->direcaoRobo = 
             }
         }break;
 
@@ -148,7 +174,7 @@ void configura_velocidade_robo(operacaoRobo_t * operacaoRobo, int leituraSensorF
 
     if(leituraSensorFrontal >= DISTANCIA_MAX_PARA_VELOCIDADE_MAXIMA_FRONTAL)
     {
-        operacaoRobo->velocidadeRobo = RAPIDA_VELOCIDADE;
+        operacaoRobo->velocidadeRobo = MEDIA_VELOCIDADE;
     }
     else if((leituraSensorFrontal <  DISTANCIA_MAX_PARA_VELOCIDADE_MAXIMA_FRONTAL) && 
             (leituraSensorFrontal >= DISTANCIA_MAX_PARA_VELOCIDADE_MEDIA_FRONTAL))
@@ -157,6 +183,6 @@ void configura_velocidade_robo(operacaoRobo_t * operacaoRobo, int leituraSensorF
     }
     else if(leituraSensorFrontal < DISTANCIA_MAX_PARA_VELOCIDADE_MEDIA_FRONTAL)
     {
-        operacaoRobo->velocidadeRobo = BAIXA_VELOCIDADE;
+        operacaoRobo->velocidadeRobo = MEDIA_VELOCIDADE;
     }
 }

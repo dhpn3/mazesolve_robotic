@@ -18,9 +18,15 @@
 /****************************************************************************************************************
  *  PROTÓTIPOS DE FUNÇÃO
  ****************************************************************************************************************/
+// definindo as portas onde estão conectados os motores 
+#define IN1 2  //Pinos motor A (Direita)        
+#define IN2 3  //Pinos motor A (Direita)                
+#define IN4 5  //Pinos motor B (Esquerda)                    
+#define IN3 6  //Pinos motor B (Esquerda) 
+
 
 void inicializa_motores(void);
 void executarMovimentoMotor(operacaoRobo_t operacaoRobo);
-
+// void controla_velocidade_motor(velocidadesRobo_t velocidadeRobo);
 
 #endif //MOTORES_H
